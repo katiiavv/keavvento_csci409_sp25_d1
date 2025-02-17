@@ -1,0 +1,21 @@
+version: '3.8'
+services:
+  routes_services:
+    build: ./routes_service
+    ports:
+      - "8001:8001"
+  alerts_services:
+    build: ./alerts_service
+    ports:
+      - "8002:8002"
+  lines_service:
+    build: ./alerts_service
+    ports:
+      - "8003:8003"
+  vehicles_service:
+    build: ./vehicles_service
+    ports:
+      - "8004:8004"
+
+
+
