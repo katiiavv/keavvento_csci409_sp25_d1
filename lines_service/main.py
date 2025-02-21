@@ -1,4 +1,6 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, HTTPException, status
+from auth import get_current_user
+from auth import User
 import httpx
 
 app = FastAPI()
@@ -13,7 +15,7 @@ async def get_all_lines():
         return response.json()
 
 @app.get("/lines")
-async def get_lines(lines=Depends(get_all_lines)):
+async def get_lines(lines=Depends(get_all_lines), current_user: User = Depends(get_current_user)):
     lines_list = [
         {
             "id": line["id"],
@@ -42,6 +44,18 @@ async def get_line(line_id: str, lines=Depends(get_line_by_id)):
         "long_name": line_data["attributes"]["long_name"],
         "color": line_data["attributes"]["color"],
     }
+
+
+@app.post("/token")
+async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
+    user = await authenticate_user(form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Credentials")
+
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(data={"sub": user.username}, expires_delta=access_token_expires)
+    return {"access_token": access_token, "token_type": "bearer"}
+
 
 if __name__ == "__main__":
     import uvicorn

@@ -1,4 +1,6 @@
-from fastapi import FASTAPI, Depends
+from fastapi import FastAPI, Depends, HTTPException, status
+from auth import get_current_user
+from auth import User
 import httpx
 
 app = FastAPI()
@@ -13,7 +15,8 @@ async def get_all_routes():
         return response.json()
 
 @app.get("/routes")
-async def get_routes(routes=Depends(get_all_routes)):
+async def get_routes(routes=Depends(get_all_routes), current_user: User = Depends(get_current_user)):
+
     routes_list = [
         {
             "id": route["id"],
@@ -43,6 +46,18 @@ async def get_route(route_id: str, route=Depends(get_route_by_id)):
         "description": route_data["attributes"]["description"],
         "long_name": route_data["attributes"]["long_name"],
     }
+
+
+@app.post("/token")
+async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
+    user = await authenticate_user(form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Credentials")
+
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(data={"sub": user.username}, expires_delta=access_token_expires)
+    return {"access_token": access_token, "token_type": "bearer"}
+
 
 if __name__ == "__main__":
     import uvicorn

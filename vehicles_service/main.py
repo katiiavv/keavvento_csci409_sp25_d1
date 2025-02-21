@@ -1,5 +1,8 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, HTTPException, status
+from auth import get_current_user
+from auth import User
 import httpx
+
 
 app = FastAPI()
 
@@ -19,7 +22,7 @@ async def get_vehicles(route: str = None, revenue: bool = None):
             response = response.json()
 
 @app.get("/vehicles")
-async def read_vehicles(route: str = None, revenue: bool = None, vehicles=Depends(get_vehicles)):
+async def read_vehicles(route: str = None, revenue: bool = None, vehicles=Depends(get_vehicles), current_user: User = Depends(get_current_user)):
     return vehicles
 
 async def get_vehicle_by_id(vehicle_id: str):
@@ -31,6 +34,18 @@ async def get_vehicle_by_id(vehicle_id: str):
 @app.get("/vehicles/{vehicle_id}")
 async def read_vehicle(vehicle_id: str, vehicle=Depends(get_vehicle_by_id)):
     return vehicle
+
+
+@app.post("/token")
+async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
+    user = await authenticate_user(form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Credentials")
+
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(data={"sub": user.username}, expires_delta=access_token_expires)
+    return {"access_token": access_token, "token_type": "bearer"}
+
 
 if __name__ == "__main__":
     import uvicorn
